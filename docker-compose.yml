@@ -1,0 +1,56 @@
+version: '3'
+
+services:
+
+  db:
+    image: mysql:5.7
+    ports:
+      - ${DB_HOST_PORT}:3306
+    command: [
+      '--default_authentication_plugin=mysql_native_password',
+      '--character-set-server=utf8mb4',
+      '--collation-server=utf8mb4_unicode_ci'
+    ]
+    volumes:
+      - ./db_data:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: ${WP_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+
+  wp:
+    build:
+      context: ./docker/WordPress
+      dockerfile: Dockerfile
+    ports:
+      - ${WP_HOST_PORT}:80
+      - ${WP_HOST_PORT_HTTPS}:443
+    volumes:
+      - ./docker/php/php-config.ini:/usr/local/etc/php/conf.d/php-config.ini
+      - ./app:/var/www/html
+      - ./${APACHE_LOG}:/var/log/apache2
+      # - ./docker/apache/vhosts/:/etc/apache2/sites-available
+    depends_on:
+      - db
+    links:
+      - db
+    environment:
+      DB_NAME: ${WP_DATABASE}
+      DB_USER: ${WP_DB_USER}
+      DB_PASSWORD: ${WP_DB_PASSWORD}
+      DB_HOST: db
+      WP_DEBUG: 1
+      LIVE_URL: https://project1.com
+      DEV_URL: http://dev.project1.com
+
+  phpmyadmin:
+    depends_on:
+      - db
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - ${PHPMYADMIN_HOST_PORT}:80
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+
+volumes:
+  db_data:
